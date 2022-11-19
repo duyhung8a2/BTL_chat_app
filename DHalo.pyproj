@@ -3,13 +3,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1aea7433-a854-441c-82c5-288bc0486b58</ProjectGuid>
-    <ProjectHome>.</ProjectHome>
+    <ProjectHome>
+    </ProjectHome>
     <StartupFile>client.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
-    <Name>BTL_chat_app</Name>
+    <Name>DHalo</Name>
     <RootNamespace>BTL_chat_app</RootNamespace>
     <InterpreterId>CondaEnv|CondaEnv|chat-app</InterpreterId>
   </PropertyGroup>
