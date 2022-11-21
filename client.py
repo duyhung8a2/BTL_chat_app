@@ -16,15 +16,6 @@ class GUI:
         self.sendfile_button = None
         self.listfriend_widget = None
         self.initialize_gui()
-        '''
-        self.set_geometry()
-        self.on_close_window()
-        self.display_address_box()
-        self.on_address_entered()
-        self.display_port_box()
-        self.on_port_entered()
-        self
-        '''
 
     def initialize_gui(self): #GUI initializer
         self.root.title("Just a demo")
