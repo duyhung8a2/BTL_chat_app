@@ -24,6 +24,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="client.py" />
+    <Compile Include="Client_test.py" />
     <Compile Include="server.py" />
   </ItemGroup>
   <ItemGroup>

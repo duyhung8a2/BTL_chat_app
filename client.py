@@ -4,9 +4,14 @@ import socket #Sockets for network connection
 import threading
 from turtle import width # for multiple proccess 
 
+DISCONNECT_MESSAGE = "!DISCONNECT"
+HEADER = 256
+FORMAT = 'utf-8'
+
 class GUI:
     client_socket = None
     last_receive_message = None
+    
 
     def __init__(self, master):
         self.root = master
@@ -15,6 +20,8 @@ class GUI:
         self.connect_button = None
         self.sendfile_button = None
         self.listfriend_widget = None
+        self.chat_transcript_area = None
+        self.list_friends = ['You']
         self.initialize_gui()
 
     def initialize_gui(self): #GUI initializer
@@ -50,6 +57,7 @@ class GUI:
         frame = Frame()
         Label(frame, text = "Address:", font=("Serif", 12)).pack(side = "left", anchor = "w")
         self.address_text_widget = Entry(frame, width = 20, font = ("Serif", 12))
+        self.address_text_widget.insert(0, "172.20.8.80")
         self.address_text_widget.pack(side = "top")
         #self.address_text_widget.bind('<Return>', self.on_address_entered)
         #frame.pack(side = "left",anchor="nw", padx = 30, pady = 30)
@@ -59,6 +67,7 @@ class GUI:
         frame = Frame()
         Label(frame, text = "Port:", font=("Serif", 12)).pack(side = "left", anchor = "w")
         self.port_text_widget = Entry(frame, width = 12, font = ("Serif", 12))
+        self.port_text_widget.insert(0, "9999")
         self.port_text_widget.pack(side = "top")
         #self.address_text_widget.bind('<Return>', self.on_port_entered)
         #frame.pack(side = "left", anchor="nw", padx = 30, pady = 30)
@@ -68,6 +77,7 @@ class GUI:
         frame = Frame()
         Label(frame, text = "Name:", font=("Serif", 12)).pack(side = "left", anchor = "w")
         self.name_text_widget = Entry(frame, width = 20, font = ("Serif", 12))
+        self.name_text_widget.insert(0, "hung")
         self.name_text_widget.pack(side = "top")
         #frame.pack(side = "bottom", anchor="sw", padx = 30, pady = 80)
         frame.place(x = 47, y = 80)
@@ -89,7 +99,7 @@ class GUI:
 
     def display_online_list(self):
         #first create a var that hold list of friends
-        friends = ['friend1', 'friend2', 'friend3']
+        friends = self.list_friends
         var = Variable(value = friends)
         frame = Frame()
         #select single for 1 line, EXTENDED for multiple line
@@ -114,30 +124,104 @@ class GUI:
         Label(frame, text='Enter message:', font=("Serif", 12)).pack(side='top', anchor='w')
         self.enter_text_widget = Text(frame, width=58, height=3, font=("Serif", 12))
         self.enter_text_widget.pack(side='left')
-        #self.enter_text_widget.bind('<Return>', self.on_enter_key_pressed)
+        self.enter_text_widget.bind('<Return>', self.on_enter_key_pressed)
         frame.place(x = 35, y= 480)
 
+    def check_valid_ip(self, ip):
+        try: socket.inet_aton(ip)
+        except socket.error:
+            return False
+
+    def check_valid_port(self, port):
+        return port.isnumeric()
+
     def on_connect(self):
-        if(len(self.address_text_widget.get()) == 0 or len(self.port_text_widget.get()) == 0 or len(self.name_text_widget.get()) == 0):
-            messagebox.showerror(
-                "Fill all info", "Please fill all field address, port, name"
-                )
+        address_ip = self.address_text_widget.get()
+        address_port = self.port_text_widget.get()
+        name = self.name_text_widget.get()
+        if(len(address_ip) == 0 or self.check_valid_ip(address_ip) == False):
+            messagebox.showerror("Fill all info", "Please fill address field correctly")
             return
-        #self.send_chat()
+        elif(len(address_port) == 0 or self.check_valid_port(address_port) == False):
+            messagebox.showerror("Fill all info", "Please fill port field correctly")
+            return
+        elif(len(name) == 0):
+            messagebox.showerror("Fill all info", "Please fill name field correctly")
+            return
+
+        #Disable all input after connect, prevent little shit change it
+        self.address_text_widget.config(state = 'disabled')
+        self.port_text_widget.config(state = 'disabled')
+        self.name_text_widget.config(state = 'disabled')
+        #After receive info about ip and port, we handshake our server
+        self.initialize_socket(address_ip, address_port)
+        #Then we send it greeting message
+        self.client_socket.send(("joined:" + name).encode(FORMAT))
+        #Then start create a thread to listen
+        self.listen_for_incoming_messages_in_a_thread()
+
+
+
+    def initialize_socket(self, remote_ip, remote_port):
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.connect((remote_ip, int(remote_port)))
+
+    def listen_for_incoming_messages_in_a_thread(self):
+        thread = threading.Thread(target=self.receive_message_from_server, args=(self.client_socket,)) # Create a thread for the send and receive in same time 
+        thread.start()
+
+    #function to recieve msg
+    def receive_message_from_server(self, so):
+        while True:
+            buffer = so.recv(256)
+            if not buffer:
+                break
+            message = buffer.decode('utf-8')
+         
+            if "joined" in message:
+                user = message.split(":")[1]
+                message = user + " has joined"
+                self.chat_transcript_area.insert('end', message + '\n')
+                self.chat_transcript_area.yview(END)
+            else:
+                self.chat_transcript_area.insert('end', message + '\n')
+                self.chat_transcript_area.yview(END)
+
+        so.close()
+
+    def update_friend_list(self):
+        print('updated')
+
+    def on_enter_key_pressed(self, event):
+        self.send_chat()
         #self.clear_text()
+
+    def send_chat(self):
+        senders_name = self.name_text_widget.get().strip() + ": "
+        data = self.enter_text_widget.get(1.0, 'end').strip()
+        message = (senders_name + data).encode(FORMAT)
+        self.chat_transcript_area.insert('end', message.decode(FORMAT) + '\n')
+        self.chat_transcript_area.yview(END)
+        self.client_socket.send(message)
+        self.enter_text_widget.delete(1.0, 'end')
+        return 'break'
+
+    def clear_text(self):
+        self.enter_text_widget.delete(1.0, 'end')
 
     def on_sendfile(self):
         print("sent")
 
     def on_disconnect(self):
-        print("disconnected")
-
-    #def display_button_connect(self):
+        self.client_socket.close()
+        self.address_text_widget.config(state = 'normal')
+        self.port_text_widget.config(state = 'normal')
+        self.name_text_widget.config(state = 'normal')
 
     def on_close_window(self):
         if messagebox.askokcancel("Quit", "Do you want to quit"):
             self.root.destroy()
-            #client socket close
+            self.client_socket.close()
             exit(0)
 
 #the main function
