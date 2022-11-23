@@ -1,3 +1,4 @@
+'''
 #import socket
 #import threading
 
@@ -153,3 +154,109 @@ def start():
 
 print("[STARTING] server is starting...")
 start()
+
+'''
+
+#imports
+from pickle import TRUE
+import socket 
+import threading
+
+FORMAT = 'utf-8'
+
+
+class ChatServer:
+    
+    clients_list = []
+    friends_list = []
+
+    last_received_message = ""
+
+    def __init__(self):
+        self.server_socket = None
+        self.create_listening_server()
+    #listen for incoming connection
+    def create_listening_server(self):
+    
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #create a socket using TCP port and ipv4
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        print(local_ip)
+        #local_ip = '127.0.0.1'
+        local_port = 9999
+        # this will allow you to immediately restart a TCP server
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # this makes the server listen to requests coming from other computers on the network
+        self.server_socket.bind((local_ip, local_port))
+        print("Listening for incoming messages..")
+        self.server_socket.listen(5) #listen for incomming connections / max 5 clients
+        self.receive_messages_in_a_new_thread()
+    
+
+            
+
+    #fun to receive new msgs
+    def receive_messages(self, so):
+        while True:
+            incoming_buffer = so.recv(256) #initialize the buffer
+            if not incoming_buffer:
+                break
+
+            #butchering message
+            message = incoming_buffer.decode('utf-8')
+            is_a_command = self.process_command(so, message)
+
+
+            # If not command,broadcast
+            if (is_a_command == False):
+                self.last_received_message = message
+                print(self.last_received_message)
+                self.broadcast_to_all_clients(so)  # send to all clients
+        so.close()
+
+    def process_command(self, senders_socket, message):
+        if 'joined:' in message:
+            user = message.split(":")[1]
+            
+            for client in self.clients_list:
+                socket, (ip, port) = client
+                if socket is senders_socket:
+                    # Update friend list
+                    self.friends_list.append((user, client))
+                    print(self.friends_list)
+            friendlist_message = ("FRIEND_LIST:" + self.return_friends_list())
+            for client in self.clients_list:
+                socket, (ip, port) = client
+                socket.send(friendlist_message.encode(FORMAT))
+            return True
+        return False
+
+    #broadcast the message to all clients 
+    def broadcast_to_all_clients(self, senders_socket):
+        for client in self.clients_list:
+            socket, (ip, port) = client
+            if socket is not senders_socket:
+                socket.sendall(self.last_received_message.encode('utf-8'))
+
+    def receive_messages_in_a_new_thread(self):
+        while True:
+            client = so, (ip, port) = self.server_socket.accept()
+            self.add_to_clients_list(client)
+            
+            print('Connected to ', ip, ':', str(port))
+            t = threading.Thread(target=self.receive_messages, args=(so,))
+            t.start()
+    #add a new client 
+    def add_to_clients_list(self, client):
+        if client not in self.clients_list:
+            self.clients_list.append(client)
+            self.clients_list
+
+    def return_friends_list(self):
+        friend_string = ""
+        for friend in self.friends_list:
+            friend_string += friend[0] + ","
+        return friend_string[:-1]
+
+if __name__ == "__main__":
+    ChatServer()

@@ -177,16 +177,32 @@ class GUI:
             if not buffer:
                 break
             message = buffer.decode('utf-8')
-         
+            print(message)
+            is_a_command = False
+            if "FRIEND_LIST" in message:
+                is_a_command = True
+                friend_string = message.split(":")[1]
+                if friend_string == '':
+                    break
+                new_list_friend = friend_string.split(",")
+                # Check if our name in it
+                new_list_friend.remove(self.name_text_widget.get())
+
+                self.list_friends = ['You'] + new_list_friend
+                self.display_online_list()
+                
+
             if "joined" in message:
+                is_a_command = True
                 user = message.split(":")[1]
                 message = user + " has joined"
                 self.chat_transcript_area.insert('end', message + '\n')
                 self.chat_transcript_area.yview(END)
-            else:
+
+            if is_a_command == False:
                 self.chat_transcript_area.insert('end', message + '\n')
                 self.chat_transcript_area.yview(END)
-
+            is_a_command = False     
         so.close()
 
     def update_friend_list(self):
@@ -194,7 +210,7 @@ class GUI:
 
     def on_enter_key_pressed(self, event):
         self.send_chat()
-        #self.clear_text()
+        self.clear_text()
 
     def send_chat(self):
         senders_name = self.name_text_widget.get().strip() + ": "
@@ -221,7 +237,8 @@ class GUI:
     def on_close_window(self):
         if messagebox.askokcancel("Quit", "Do you want to quit"):
             self.root.destroy()
-            self.client_socket.close()
+            if (self.client_socket != None):
+                self.client_socket.close()
             exit(0)
 
 #the main function

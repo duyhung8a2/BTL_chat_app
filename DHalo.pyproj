@@ -5,7 +5,7 @@
     <ProjectGuid>1aea7433-a854-441c-82c5-288bc0486b58</ProjectGuid>
     <ProjectHome>
     </ProjectHome>
-    <StartupFile>client.py</StartupFile>
+    <StartupFile>server.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -13,6 +13,8 @@
     <Name>DHalo</Name>
     <RootNamespace>BTL_chat_app</RootNamespace>
     <InterpreterId>CondaEnv|CondaEnv|chat-app</InterpreterId>
+    <TestFramework>Pytest</TestFramework>
+    <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
