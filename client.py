@@ -1,12 +1,21 @@
 #import everything while you can
-from tkinter import Listbox, Tk, Frame, Scrollbar, Label, END, Entry, Text, VERTICAL, Button, Variable, messagebox #Tkinter Python Module for GUI  
+from fileinput import filename
+import tkinter
+from tkinter import Listbox, Tk, Frame, Scrollbar, Label, END, Entry, Text, VERTICAL, Button, Variable, filedialog, messagebox #Tkinter Python Module for GUI  
 import socket #Sockets for network connection
 import threading
 from turtle import width # for multiple proccess 
+import os
 
 DISCONNECT_MESSAGE = "!DISCONNECT"
-HEADER = 256
+BUFFER_SIZE = 1024
 FORMAT = 'utf-8'
+DEFAULT_HOST_IP = socket.gethostbyname(socket.gethostname())
+
+
+
+
+
 
 class GUI:
     client_socket = None
@@ -32,7 +41,7 @@ class GUI:
         self.display_port_box()
         self.display_connect_button()
         self.display_name_box()
-        self.display_sendfile_button()
+        #self.display_sendfile_button()
         self.display_disconnect_button()
         self.display_online_list()
         self.display_chat_box()
@@ -57,7 +66,7 @@ class GUI:
         frame = Frame()
         Label(frame, text = "Address:", font=("Serif", 12)).pack(side = "left", anchor = "w")
         self.address_text_widget = Entry(frame, width = 20, font = ("Serif", 12))
-        self.address_text_widget.insert(0, "172.20.8.80")
+        self.address_text_widget.insert(0, DEFAULT_HOST_IP)
         self.address_text_widget.pack(side = "top")
         #self.address_text_widget.bind('<Return>', self.on_address_entered)
         #frame.pack(side = "left",anchor="nw", padx = 30, pady = 30)
@@ -104,8 +113,9 @@ class GUI:
         frame = Frame()
         #select single for 1 line, EXTENDED for multiple line
         Label(frame, text = "Friends online:", font=("Serif", 12)).pack(side = "top", anchor = "w")
-        listfriend_widget = Listbox(frame, listvariable=var,width = 18, height=24, font=('Serif', 12), selectmode='SINGLE')
-        listfriend_widget.pack()
+        self.listfriend_widget = Listbox(frame, listvariable=var,width = 18, height=24, font=('Serif', 12), selectmode='SINGLE')
+        self.listfriend_widget.bind('<<ListboxSelect>>', self.on_friend_selected)
+        self.listfriend_widget.pack()
         frame.place(x = 600, y = 78)
 
     def display_chat_box(self):
@@ -173,37 +183,55 @@ class GUI:
     #function to recieve msg
     def receive_message_from_server(self, so):
         while True:
-            buffer = so.recv(256)
+            buffer = so.recv(BUFFER_SIZE)
             if not buffer:
                 break
             message = buffer.decode('utf-8')
             print(message)
-            is_a_command = False
-            if "FRIEND_LIST" in message:
-                is_a_command = True
-                friend_string = message.split(":")[1]
-                if friend_string == '':
-                    break
-                new_list_friend = friend_string.split(",")
-                # Check if our name in it
-                new_list_friend.remove(self.name_text_widget.get())
-
-                self.list_friends = ['You'] + new_list_friend
-                self.display_online_list()
-                
-
-            if "joined" in message:
-                is_a_command = True
-                user = message.split(":")[1]
-                message = user + " has joined"
-                self.chat_transcript_area.insert('end', message + '\n')
-                self.chat_transcript_area.yview(END)
-
+            is_a_command = self.process_command(so, message)
+            
             if is_a_command == False:
                 self.chat_transcript_area.insert('end', message + '\n')
-                self.chat_transcript_area.yview(END)
-            is_a_command = False     
+                self.chat_transcript_area.yview(END)   
         so.close()
+
+    def process_command(self, so, message):
+        if "FRIEND_LIST" in message:
+            friend_string = message.split(":")[1]
+            if friend_string == '':
+                return True
+            new_list_friend = friend_string.split(",")
+            # Check if our name in it
+            new_list_friend.remove(self.name_text_widget.get())
+
+            self.list_friends = ['You'] + new_list_friend
+            self.display_online_list()
+            return True
+              
+
+        if "joined" in message:
+            user = message.split(":")[1]
+            message = user + " has joined"
+            self.chat_transcript_area.insert('end', message + '\n')
+            self.chat_transcript_area.yview(END)
+
+        if "REQUEST_ADDR_ANS:" in message:
+            addr = message.split(":")[1].split(",")
+            ip = addr[0]
+            port = addr[1]
+            #print(addr, ip[2:], port[4:])
+            self.start_p2p_window(ip[2:], port[4:])
+            return True
+
+        return False
+
+    def start_p2p_window(self, ip, port):
+
+        p2p_window = tkinter.Toplevel(self.root)
+        #p2p_gui = P2P_GUI(p2p_window, ip, port)
+        
+
+
 
     def update_friend_list(self):
         print('updated')
@@ -226,7 +254,15 @@ class GUI:
         self.enter_text_widget.delete(1.0, 'end')
 
     def on_sendfile(self):
-        print("sent")
+        global filename
+        filename = filedialog.askopenfilename(initialdir = os.getcwd(),
+                                              title = 'Select Image File',
+                                              filetype = ('all files', '*.*'))
+
+        file = open(filename, "rb")
+        file_data = file.read(BUFFER_SIZE - len('SENDFILE:'.encode(FORMAT)))
+        self.client_socket.send(('SENDFILE:' + file_data).encode(FORMAT))
+
 
     def on_disconnect(self):
         self.client_socket.close()
@@ -240,6 +276,20 @@ class GUI:
             if (self.client_socket != None):
                 self.client_socket.close()
             exit(0)
+
+    def on_friend_selected(self, event):
+        if (self.client_socket == None):
+            return
+        #get selected incide
+        selected_indice = self.listfriend_widget.curselection()
+        if selected_indice[0] == 0:
+            return
+        #get selected friend
+        selected_friend = self.listfriend_widget.get(selected_indice)
+        
+        # command REQUEST_ADDR:
+        message = 'REQUEST_ADDR:' + selected_friend
+        self.client_socket.send(message.encode(FORMAT))
 
 #the main function
 if __name__ == "__main__":

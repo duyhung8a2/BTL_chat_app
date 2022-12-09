@@ -2,7 +2,7 @@
 #import socket
 #import threading
 
-#HEADER = 64
+#BUFFER_SIZE = 64
 #PORT = 9999
 #hostname = socket.gethostname()
 #SERVER = socket.gethostbyname(hostname)
@@ -27,7 +27,7 @@
 
 #    connected = True
 #    while connected:
-#        msg_length = conn.recv(HEADER).decode(FORMAT)
+#        msg_length = conn.recv(BUFFER_SIZE).decode(FORMAT)
 #        if msg_length:
             
 #            msg_length = int(msg_length)
@@ -45,7 +45,7 @@
 #                message = name.encode(FORMAT)
 #                msg_length = len(message)
 #                send_length = str(msg_length).encode(FORMAT)
-#                send_length += b' ' * (HEADER - len(send_length))
+#                send_length += b' ' * (BUFFER_SIZE - len(send_length))
 #                for lst in socket_list:
 #                    lst.send(send_length)
 #                    lst.send(message)
@@ -56,7 +56,7 @@
 #                        message = str("IP: " + str(i[1][0]) + " PORT: " + str(i[1][1])).encode(FORMAT)
 #                        msg_length = len(message)
 #                        send_length = str(msg_length).encode(FORMAT)
-#                        send_length += b' ' * (HEADER - len(send_length))
+#                        send_length += b' ' * (BUFFER_SIZE - len(send_length))
 #                        conn.send(send_length)
 #                        conn.send(message)
 #                        break
@@ -83,7 +83,7 @@
 import socket
 import threading
 
-HEADER = 64
+BUFFER_SIZE = 64
 PORT = 9999
 hostname = socket.gethostname()
 SERVER = socket.gethostbyname(hostname)
@@ -108,7 +108,7 @@ def handle_client(conn, addr):
 
     connected = True
     while connected:
-        msg_length = conn.recv(HEADER).decode(FORMAT)
+        msg_length = conn.recv(BUFFER_SIZE).decode(FORMAT)
         if msg_length:
             
             
@@ -163,7 +163,7 @@ import socket
 import threading
 
 FORMAT = 'utf-8'
-
+BUFFER_SIZE = 1024
 
 class ChatServer:
     
@@ -198,8 +198,9 @@ class ChatServer:
     #fun to receive new msgs
     def receive_messages(self, so):
         while True:
-            incoming_buffer = so.recv(256) #initialize the buffer
+            incoming_buffer = so.recv(BUFFER_SIZE) #initialize the buffer
             if not incoming_buffer:
+                
                 break
 
             #butchering message
@@ -229,6 +230,17 @@ class ChatServer:
                 socket, (ip, port) = client
                 socket.send(friendlist_message.encode(FORMAT))
             return True
+        if "REQUEST_ADDR:" in message:
+            user_requested = message.split(":")[1]
+            # find it in friend list
+            for friend in self.friends_list:
+                if user_requested == friend[0]:
+                    socket, (ip, port) = friend[1]
+                    # send back specific user request its ip and port with REQUEST_ADDR_ANS:
+                    message = "REQUEST_ADDR_ANS:" + "IP{},PORT{}".format(ip, port)
+                    socket.send(message.encode(FORMAT))
+            return True
+            
         return False
 
     #broadcast the message to all clients 
