@@ -125,14 +125,8 @@ class P2P_GUI:
         print('sent')
 
     def initialize_thread(self):
-        #chat_listener = self.ChatListener(self.target_port)
-        #chat_listener.start()
-
-        #chat_sender = self.ChatSender(self.target_ip, self.target_port)
-        #chat_sender.start()
-        #Start create a thread to listen
-        
-        #Then wait for other friend to connect
+        #If this is a user that receive request connect, connect to user who request connect
+        #Else start a thread to listen to connection made by receive user
         if (self.target_ip != None and self.target_port != None):
             self.initialize_socket(self.target_ip, self.target_port)
             self.client_socket.send(("CONNECTED:" + self.name).encode(FORMAT))
@@ -141,6 +135,7 @@ class P2P_GUI:
             self.listen_server_in_a_thread()
         
     def listen_server_in_a_thread(self):
+        #Create a thread to listen to connection
         l_thread = threading.Thread(target=self.create_listening_server, args=()) 
         l_thread.start()
 
@@ -149,7 +144,6 @@ class P2P_GUI:
         hostname = socket.gethostname()
         local_ip = socket.gethostbyname(hostname)
         print(local_ip)
-        #local_ip = '127.0.0.1'
         local_port = LISTENER_PORT
         # this will allow you to immediately restart a TCP server
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -484,7 +478,6 @@ class GUI:
             exit(0)
 
     def on_friend_selected(self, event):
-        
         senders_name = self.name_text_widget.get().strip()
         if (self.client_socket == None):
             return
