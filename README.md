@@ -1,7 +1,7 @@
 
 # DHalo
 
-DHalo is a simple hybrid chat app, implement chat room and p2p private chat
+DHalo is a simple hybrid chat app, implement chat room, p2p private chat, file transfer.
 
 ## How to use it
 
