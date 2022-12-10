@@ -205,6 +205,7 @@ class ChatServer:
 
             #butchering message
             message = incoming_buffer.decode('utf-8')
+            print(message)
             is_a_command = self.process_command(so, message)
 
 
@@ -231,14 +232,18 @@ class ChatServer:
                 socket.send(friendlist_message.encode(FORMAT))
             return True
         if "REQUEST_ADDR:" in message:
-            user_requested = message.split(":")[1]
+            metadata = message.split(":")[1]
+            sender, receiver, listen_at_port = metadata.split(",")
             # find it in friend list
-            for friend in self.friends_list:
-                if user_requested == friend[0]:
-                    socket, (ip, port) = friend[1]
-                    # send back specific user request its ip and port with REQUEST_ADDR_ANS:
-                    message = "REQUEST_ADDR_ANS:" + "IP{},PORT{}".format(ip, port)
-                    socket.send(message.encode(FORMAT))
+            for friend1 in self.friends_list:
+                for friend2 in self.friends_list:
+                    if sender == friend1[0] and receiver == friend2[0]:
+                        socket1, (ip1, port1) = friend1[1]
+                        socket2, (ip2, port2) = friend2[1]
+                        # send back specific user request its ip and port with:
+                        message = "REQUEST_ADDR_FROM:" + "IP{},PORT{}".format(ip1, listen_at_port)
+                        print("reply:" + message)
+                        socket2.send(message.encode(FORMAT))
             return True
             
         return False

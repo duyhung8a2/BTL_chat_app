@@ -5,7 +5,7 @@
     <ProjectGuid>1aea7433-a854-441c-82c5-288bc0486b58</ProjectGuid>
     <ProjectHome>
     </ProjectHome>
-    <StartupFile>server.py</StartupFile>
+    <StartupFile>client.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,6 +27,8 @@
   <ItemGroup>
     <Compile Include="client.py" />
     <Compile Include="Client_test.py" />
+    <Compile Include="p2p_client.py" />
+    <Compile Include="p2p_client2.py" />
     <Compile Include="server.py" />
   </ItemGroup>
   <ItemGroup>
