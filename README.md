@@ -14,7 +14,10 @@ python server.py
 python client.py
 python client.py
 ```
-
+## Requirement
+```cmd
+pip install -r requirements.txt
+```
 
 ## Contributing
 
