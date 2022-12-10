@@ -12,7 +12,7 @@
     <OutputPath>.</OutputPath>
     <Name>DHalo</Name>
     <RootNamespace>BTL_chat_app</RootNamespace>
-    <InterpreterId>CondaEnv|CondaEnv|chat-app</InterpreterId>
+    <InterpreterId>Global|PythonCore|3.9</InterpreterId>
     <TestFramework>Pytest</TestFramework>
     <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
@@ -30,9 +30,11 @@
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="CondaEnv|CondaEnv|chat-app" />
+    <InterpreterReference Include="Global|PythonCore|3.9" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="README.md" />
+    <Content Include="requirements.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

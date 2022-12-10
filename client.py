@@ -6,6 +6,7 @@ import socket #Sockets for network connection
 import threading
 from turtle import width # for multiple proccess 
 import os
+import tqdm
 
 DISCONNECT_MESSAGE = "!DISCONNECT"
 BUFFER_SIZE = 1024
@@ -59,7 +60,9 @@ class P2P_GUI:
         self.target_ip = ip
         self.target_port = port
         self.name = name
-        
+        self.filename = None
+        self.filesize = 0
+        self.isFileTransfering = False
         self.chat_p2p_transcript_area = None
         #self.chat_listenter = None
         #self.chat_sender = None
@@ -165,25 +168,51 @@ class P2P_GUI:
     #function to recieve msg
     def receive_private_message_from_friend(self, so):
         while True:
-            buffer = so.recv(BUFFER_SIZE)
-            if not buffer:
-                break
-            message = buffer.decode('utf-8')
-            print(message)
-            is_a_command = self.process_private_command(so, message)
+            if self.isFileTransfering == True:
+                with open(self.filename, "wb") as f:
+                    while True:
+                        # read 1024 bytes from the socket (receive)
+                        bytes_read = self.client_socket.recv(BUFFER_SIZE)
+                        if not bytes_read:    
+                            # nothing is received
+                            # file transmitting is done
+                            self.isFileTransfering = False
+                            self.filename = None
+                            self.filesize = None
+
+                            break
+                        # write to the file the bytes we just received
+                        f.write(bytes_read)
+                    f.close()
+            else:
+                buffer = so.recv(BUFFER_SIZE)
+                if not buffer:
+                    break
+
+                message = buffer.decode('utf-8')
+                print(message)
+                is_a_command = self.process_private_command(so, message)
             
-            if is_a_command == False:
-                self.chat_p2p_transcript_area.insert('end', message + '\n')
-                self.chat_p2p_transcript_area.yview(END)   
+                if is_a_command == False:
+                    self.chat_p2p_transcript_area.insert('end', message + '\n')
+                    self.chat_p2p_transcript_area.yview(END)   
+
         so.close()
 
     def process_private_command(self, senders_socket, message):
         if 'CONNECTED:' in message:
             #user = message.split(":")[1]
+            reply = "CONNECTED_REPLY:" + self.name 
+            self.client_socket.send(reply.encode(FORMAT))
             self.chat_p2p_transcript_area.insert('end', message + '\n')
             self.chat_p2p_transcript_area.yview(END)   
             return True
-           
+        if 'SEND_FILE:' in message:
+            self.isFileTransfering = True
+            self.filename, self.filesize = message.split(':')[1].split(',')
+            self.filesize = int(self.filesize)
+            return True
+
         return False
 
     def initialize_socket(self, remote_ip, remote_port):
@@ -212,6 +241,35 @@ class P2P_GUI:
 
     def clear_text(self):
         self.enter_text_widget.delete(1.0, 'end')
+
+    def on_sendfile(self):
+        global file_path
+        #filename = filedialog.askopenfilename(initialdir = os.getcwd(),
+        #                                      title = 'Select Image File',
+        #                                      filetype = ('all files', '*.*'))
+        filepath = filedialog.askopenfilename()
+        print(filepath)
+        filesize = os.path.getsize(filepath)
+        print(filesize)
+        filename = os.path.basename(filepath).split('/')[-1]
+        print (filename)
+        #say that we will send file
+        self.client_socket.send(f"SEND_FILE:{filename},{filesize}".encode(FORMAT))
+        # start sending the file
+        progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+        with open(filepath, "rb") as f:
+            while True:
+                # read the bytes from the file
+                bytes_read = f.read(BUFFER_SIZE)
+                if not bytes_read:
+                    # file transmitting is done
+                    break
+                # we use sendall to assure transimission in 
+                # busy networks
+                self.client_socket.sendall(bytes_read)
+                # update the progress bar
+                progress.update(len(bytes_read))
+        print("\nFinished")
 
 class GUI:
     client_socket = None
@@ -454,14 +512,15 @@ class GUI:
         self.enter_text_widget.delete(1.0, 'end')
 
     def on_sendfile(self):
-        global filename
-        filename = filedialog.askopenfilename(initialdir = os.getcwd(),
-                                              title = 'Select Image File',
-                                              filetype = ('all files', '*.*'))
+        #global filename
+        #filename = filedialog.askopenfilename(initialdir = os.getcwd(),
+        #                                      title = 'Select Image File',
+        #                                      filetype = ('all files', '*.*'))
 
-        file = open(filename, "rb")
-        file_data = file.read(BUFFER_SIZE - len('SENDFILE:'.encode(FORMAT)))
-        self.client_socket.send(('SENDFILE:' + file_data).encode(FORMAT))
+        #file = open(filename, "rb")
+        #file_data = file.read(BUFFER_SIZE - len('SENDFILE:'.encode(FORMAT)))
+        #self.client_socket.send(('SENDFILE:' + file_data).encode(FORMAT))
+        pass
 
 
     def on_disconnect(self):
@@ -504,4 +563,5 @@ if __name__ == "__main__":
     gui = GUI(root)
     root.protocol("WM_DELETE_WINDOW", gui.on_close_window)
     root.mainloop()
+
 
