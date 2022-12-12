@@ -14,7 +14,7 @@ FORMAT = 'utf-8'
 DEFAULT_HOST_IP = socket.gethostbyname(socket.gethostname())
 LISTENER_PORT = 19999
 
-class P2P_GUI:
+class P2PGUIClient:
     #class ChatListener(threading.Thread):
 
     #    def __init__(self, port):
@@ -176,14 +176,16 @@ class P2P_GUI:
                         if not bytes_read:    
                             # nothing is received
                             # file transmitting is done
+
                             self.isFileTransfering = False
                             self.filename = None
                             self.filesize = None
-
                             break
                         # write to the file the bytes we just received
                         f.write(bytes_read)
                     f.close()
+
+
             else:
                 buffer = so.recv(BUFFER_SIZE)
                 if not buffer:
@@ -202,7 +204,7 @@ class P2P_GUI:
     def process_private_command(self, senders_socket, message):
         if 'CONNECTED:' in message:
             #user = message.split(":")[1]
-            reply = "CONNECTED_REPLY:" + self.name 
+            reply = "CONNECTED_WITH:" + self.name 
             self.client_socket.send(reply.encode(FORMAT))
             self.chat_p2p_transcript_area.insert('end', message + '\n')
             self.chat_p2p_transcript_area.yview(END)   
@@ -211,12 +213,16 @@ class P2P_GUI:
             self.isFileTransfering = True
             self.filename, self.filesize = message.split(':')[1].split(',')
             self.filesize = int(self.filesize)
+            sendfile_message = (f"Received file {self.filename} at default folder")
+            self.chat_p2p_transcript_area.insert('end', sendfile_message + '\n')
+            self.chat_p2p_transcript_area.yview(END)
             return True
 
         return False
 
     def initialize_socket(self, remote_ip, remote_port):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.client_socket.connect((remote_ip, int(remote_port)))
 
     
@@ -255,6 +261,11 @@ class P2P_GUI:
         print (filename)
         #say that we will send file
         self.client_socket.send(f"SEND_FILE:{filename},{filesize}".encode(FORMAT))
+        #notify that file is sending
+        sendfile_message = (f"Sended file {filename} to opponent")
+        self.chat_p2p_transcript_area.insert('end', sendfile_message + '\n')
+        self.chat_p2p_transcript_area.yview(END)
+
         # start sending the file
         progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
         with open(filepath, "rb") as f:
@@ -270,8 +281,15 @@ class P2P_GUI:
                 # update the progress bar
                 progress.update(len(bytes_read))
         print("\nFinished")
+        
+    #def on_close_window(self):
+    #    if messagebox.askokcancel("Quit", "Do you want to quit"):
+    #        self.root.destroy()
+    #        if (self.client_socket != None):
+    #            self.client_socket.close()
+    #        exit(0)
 
-class GUI:
+class GUIClient:
     client_socket = None
     last_receive_message = None
     
@@ -420,13 +438,14 @@ class GUI:
         #After receive info about ip and port, we handshake our server
         self.initialize_socket(address_ip, address_port)
         #Then we send it greeting message
-        self.client_socket.send(("joined:" + name).encode(FORMAT))
+        self.client_socket.send(("CONNECTED:" + name).encode(FORMAT))
         #Then start create a thread to listen
         self.listen_for_incoming_messages_in_a_thread()
 
 
 
     def initialize_socket(self, remote_ip, remote_port):
+        self.client_socket = None
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((remote_ip, int(remote_port)))
 
@@ -462,7 +481,6 @@ class GUI:
             self.display_online_list()
             return True
               
-
         if "joined" in message:
             user = message.split(":")[1]
             message = user + " has joined"
@@ -485,8 +503,8 @@ class GUI:
     def start_p2p_window(self,own_name, own_ip, own_port, ip = None, port = None):
 
         p2p_window = tkinter.Toplevel(self.root)
-        p2p_gui = P2P_GUI(p2p_window, own_name, own_ip, own_port, ip, port)
-
+        p2p_gui = P2PGUIClient(p2p_window, own_name, own_ip, own_port, ip, port)
+        #p2p_window.protocol("WM_DELETE_WINDOW", p2p_gui.on_close_window)
         
 
 
@@ -560,7 +578,7 @@ class GUI:
 #the main function
 if __name__ == "__main__":
     root = Tk()
-    gui = GUI(root)
+    gui = GUIClient(root)
     root.protocol("WM_DELETE_WINDOW", gui.on_close_window)
     root.mainloop()
 

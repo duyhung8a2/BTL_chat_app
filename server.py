@@ -217,7 +217,7 @@ class ChatServer:
         so.close()
 
     def process_command(self, senders_socket, message):
-        if 'joined:' in message:
+        if 'CONNECTED:' in message:
             user = message.split(":")[1]
             
             for client in self.clients_list:
